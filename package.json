@@ -1,0 +1,11 @@
+{
+  "name": "iron-log",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "api": "npm run start:dev -w @iron-log/api",
+    "mobile": "npm run start -w @iron-log/mobile"
+  }
+}
