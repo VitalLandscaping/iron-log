@@ -125,6 +125,39 @@ export interface CreateTemplateInput {
   exercises: TemplateExerciseInput[];
 }
 
+// Stats types
+export interface Streak {
+  currentStreak: number;
+  longestStreak: number;
+}
+
+export interface StatsSummary {
+  totalWorkouts: number;
+  totalSets: number;
+  totalTimeMs: number;
+  prCount: number;
+  thisWeekSessions: number;
+}
+
+export interface PREntry {
+  exerciseId: string;
+  exerciseName: string;
+  muscleGroup: string;
+  weight: number;
+  reps: number;
+  e1rm: number;
+  date: string;
+}
+
+export interface ExerciseWithHistory {
+  id: string;
+  name: string;
+  muscleGroup: string;
+  category: string;
+  sessionCount: number;
+  maxWeight: number;
+}
+
 // API Client
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
@@ -265,4 +298,17 @@ export const api = {
   // Start from template
   startFromTemplate: (templateId: string) =>
     request<Workout>(`/workouts/from-template/${templateId}`, { method: 'POST' }),
+
+  // Stats
+  getStreak: () => request<Streak>('/stats/streak'),
+
+  getSummary: () => request<StatsSummary>('/stats/summary'),
+
+  getMuscleActivity: () => request<Record<string, number>>('/stats/muscle-activity'),
+
+  // All PRs
+  getAllPRs: () => request<PREntry[]>('/exercises/prs'),
+
+  // Exercises with history
+  getExercisesWithHistory: () => request<ExerciseWithHistory[]>('/exercises/with-history'),
 };

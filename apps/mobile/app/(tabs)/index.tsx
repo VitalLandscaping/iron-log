@@ -10,27 +10,37 @@ import {
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { theme, MUSCLE_COLORS } from '@/constants/colors';
-import { api, WorkoutTemplate, Workout } from '@/services/api';
+import { api, WorkoutTemplate, Workout, Streak, StatsSummary } from '@/services/api';
 import { useActiveWorkout } from '@/hooks/useActiveWorkout';
+import MuscleMap from '@/components/MuscleMap';
 
 export default function HomeScreen() {
   const router = useRouter();
   const { startFromTemplate, activeWorkout } = useActiveWorkout();
   const [templates, setTemplates] = useState<WorkoutTemplate[]>([]);
   const [recentWorkouts, setRecentWorkouts] = useState<Workout[]>([]);
+  const [streak, setStreak] = useState<Streak | null>(null);
+  const [stats, setStats] = useState<StatsSummary | null>(null);
+  const [muscleActivity, setMuscleActivity] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [startingTemplate, setStartingTemplate] = useState<string | null>(null);
 
   const loadData = async () => {
     try {
-      const [templatesData, workoutsData] = await Promise.all([
+      const [templatesData, workoutsData, streakData, statsData, muscleData] = await Promise.all([
         api.getTemplates(),
         api.getWorkouts(1, 5),
+        api.getStreak(),
+        api.getSummary(),
+        api.getMuscleActivity(),
       ]);
       setTemplates(templatesData);
       // Only show completed workouts
       setRecentWorkouts(workoutsData.filter((w) => w.endTime));
+      setStreak(streakData);
+      setStats(statsData);
+      setMuscleActivity(muscleData);
     } catch (error) {
       console.error('Failed to load data:', error);
     } finally {
@@ -77,6 +87,15 @@ export default function HomeScreen() {
     return `${hours}h ${mins}m`;
   };
 
+  const formatTotalTime = (ms: number) => {
+    const hours = Math.floor(ms / 3600000);
+    if (hours === 0) {
+      const mins = Math.floor(ms / 60000);
+      return `${mins}m`;
+    }
+    return `${hours}h`;
+  };
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     const today = new Date();
@@ -121,6 +140,69 @@ export default function HomeScreen() {
           </View>
           <Text style={styles.activeWorkoutArrow}>→</Text>
         </TouchableOpacity>
+      )}
+
+      {/* Stats Overview */}
+      {(streak || stats) && (
+        <View style={styles.statsRow}>
+          {/* Streak Card */}
+          {streak && (
+            <View style={styles.statCard}>
+              <Text style={styles.statEmoji}>🔥</Text>
+              <Text style={styles.statValue}>{streak.currentStreak}</Text>
+              <Text style={styles.statLabel}>day streak</Text>
+            </View>
+          )}
+
+          {/* This Week Card */}
+          {stats && (
+            <View style={styles.statCard}>
+              <Text style={styles.statEmoji}>📅</Text>
+              <Text style={styles.statValue}>{stats.thisWeekSessions}</Text>
+              <Text style={styles.statLabel}>this week</Text>
+            </View>
+          )}
+
+          {/* PRs Card */}
+          {stats && (
+            <View style={styles.statCard}>
+              <Text style={styles.statEmoji}>🏆</Text>
+              <Text style={styles.statValue}>{stats.prCount}</Text>
+              <Text style={styles.statLabel}>PRs</Text>
+            </View>
+          )}
+        </View>
+      )}
+
+      {/* Stats Summary Bar */}
+      {stats && stats.totalWorkouts > 0 && (
+        <View style={styles.statsSummary}>
+          <View style={styles.summaryItem}>
+            <Text style={styles.summaryValue}>{stats.totalWorkouts}</Text>
+            <Text style={styles.summaryLabel}>workouts</Text>
+          </View>
+          <View style={styles.summaryDivider} />
+          <View style={styles.summaryItem}>
+            <Text style={styles.summaryValue}>{stats.totalSets}</Text>
+            <Text style={styles.summaryLabel}>sets</Text>
+          </View>
+          <View style={styles.summaryDivider} />
+          <View style={styles.summaryItem}>
+            <Text style={styles.summaryValue}>{formatTotalTime(stats.totalTimeMs)}</Text>
+            <Text style={styles.summaryLabel}>total time</Text>
+          </View>
+        </View>
+      )}
+
+      {/* Muscle Activity Map */}
+      {Object.keys(muscleActivity).length > 0 && (
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Recent Activity</Text>
+            <Text style={styles.subtitleText}>Last 7 days</Text>
+          </View>
+          <MuscleMap activity={muscleActivity} />
+        </View>
       )}
 
       {/* Quick Start Section */}
@@ -262,7 +344,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.accent + '22',
     borderRadius: 12,
     padding: 16,
-    marginBottom: 24,
+    marginBottom: 20,
     borderWidth: 1,
     borderColor: theme.accent,
   },
@@ -293,6 +375,71 @@ const styles = StyleSheet.create({
     color: theme.accent,
     fontWeight: 'bold',
   },
+
+  // Stats Row
+  statsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 16,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: theme.card,
+    borderRadius: 12,
+    padding: 14,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: theme.border,
+  },
+  statEmoji: {
+    fontSize: 20,
+    marginBottom: 4,
+  },
+  statValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: theme.text,
+    fontFamily: 'SpaceMono',
+  },
+  statLabel: {
+    fontSize: 10,
+    color: theme.textMuted,
+    fontFamily: 'SpaceMono',
+    textTransform: 'uppercase',
+  },
+
+  // Stats Summary
+  statsSummary: {
+    flexDirection: 'row',
+    backgroundColor: theme.card,
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: theme.border,
+    alignItems: 'center',
+    justifyContent: 'space-around',
+  },
+  summaryItem: {
+    alignItems: 'center',
+  },
+  summaryValue: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: theme.accent,
+    fontFamily: 'SpaceMono',
+  },
+  summaryLabel: {
+    fontSize: 11,
+    color: theme.textMuted,
+    fontFamily: 'SpaceMono',
+  },
+  summaryDivider: {
+    width: 1,
+    height: 30,
+    backgroundColor: theme.border,
+  },
+
   section: {
     marginBottom: 24,
   },
@@ -306,6 +453,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     color: theme.text,
+    fontFamily: 'SpaceMono',
+  },
+  subtitleText: {
+    fontSize: 12,
+    color: theme.textMuted,
     fontFamily: 'SpaceMono',
   },
   seeAllText: {

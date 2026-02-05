@@ -10,6 +10,17 @@ export class ExercisesController {
     return this.exercisesService.findAll(muscle);
   }
 
+  // IMPORTANT: These must be before :id route
+  @Get('prs')
+  getAllPRs() {
+    return this.exercisesService.getAllPRs();
+  }
+
+  @Get('with-history')
+  getExercisesWithHistory() {
+    return this.exercisesService.getExercisesWithHistory();
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.exercisesService.findOne(id);

@@ -8,9 +8,10 @@ import { WorkoutsModule } from './workouts/workouts.module';
 import { ExercisesModule } from './exercises/exercises.module';
 import { SettingsModule } from './settings/settings.module';
 import { TemplatesModule } from './templates/templates.module';
+import { StatsModule } from './stats/stats.module';
 
 @Module({
-  imports: [PrismaModule, WorkoutsModule, ExercisesModule, SettingsModule, TemplatesModule],
+  imports: [PrismaModule, WorkoutsModule, ExercisesModule, SettingsModule, TemplatesModule, StatsModule],
   controllers: [AppController],
   providers: [
     AppService,
