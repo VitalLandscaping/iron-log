@@ -98,7 +98,7 @@ export default function HistoryScreen() {
         {prs.length === 0 ? (
           <View style={styles.emptyState}>
             <Text style={styles.emptyText}>No PRs yet</Text>
-            <Text style={styles.emptySubtext}>Complete workouts to set personal records</Text>
+            <Text style={styles.emptySubtext}>PRs will appear after your first workout</Text>
           </View>
         ) : (
           <View style={styles.prGrid}>
@@ -138,8 +138,8 @@ export default function HistoryScreen() {
 
         {Object.keys(groupedExercises).length === 0 ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyText}>No exercise history</Text>
-            <Text style={styles.emptySubtext}>Complete workouts to see your history</Text>
+            <Text style={styles.emptyText}>No workouts yet</Text>
+            <Text style={styles.emptySubtext}>Start your first one! 💪</Text>
           </View>
         ) : (
           Object.entries(groupedExercises).map(([group, groupExercises]) => {

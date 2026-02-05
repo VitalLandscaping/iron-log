@@ -7,6 +7,7 @@ import { RestTimer } from './RestTimer';
 import { RestTimerOverride } from './RestTimerOverride';
 import { RPEInfo } from './RPEInfo';
 import { generateWarmupSets } from '@/services/warmupGenerator';
+import { lightHaptic, warningHaptic } from '@/services/haptics';
 
 const SUPERSET_TAGS = ['A', 'B', 'C', 'D', 'E'];
 
@@ -104,6 +105,7 @@ export function ExerciseCard({
   }, [workoutExercise.sets]);
 
   const handleAddSet = () => {
+    lightHaptic();
     const nextSetNumber = workoutExercise.sets.length + 1;
     const lastSet = workoutExercise.sets[workoutExercise.sets.length - 1];
     onAddSet({

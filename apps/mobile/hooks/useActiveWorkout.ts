@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api, Workout, WorkoutExercise, ExerciseSet, SetInput, UserSettings } from '@/services/api';
+import { successHaptic } from '@/services/haptics';
 
 const ACTIVE_WORKOUT_KEY = 'iron-log-active-workout';
 
@@ -80,6 +81,7 @@ export function useActiveWorkout(): UseActiveWorkoutReturn {
       restIntervalRef.current = setInterval(() => {
         setRestTimer((prev) => {
           if (!prev || prev.remaining <= 1) {
+            successHaptic(); // Rest timer complete
             return null;
           }
           return { ...prev, remaining: prev.remaining - 1 };
@@ -301,6 +303,7 @@ export function useActiveWorkout(): UseActiveWorkoutReturn {
       await AsyncStorage.removeItem(ACTIVE_WORKOUT_KEY);
       setActiveWorkout(null);
       setRestTimer(null);
+      successHaptic(); // Workout finished
       return result.newPRs;
     } catch (error) {
       console.error('Failed to finish workout:', error);

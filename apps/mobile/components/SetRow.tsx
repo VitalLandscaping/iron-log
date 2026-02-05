@@ -4,6 +4,7 @@ import { theme, SET_TYPE_STYLES, SET_TYPES } from '@/constants/colors';
 import { ExerciseSet } from '@/services/api';
 import { RPEPicker } from './RPEPicker';
 import { PlateCalculator } from './PlateCalculator';
+import { lightHaptic, mediumHaptic, warningHaptic } from '@/services/haptics';
 
 interface SetRowProps {
   set: ExerciseSet;
@@ -37,6 +38,7 @@ export function SetRow({
   const typeStyle = SET_TYPE_STYLES[set.setType] || SET_TYPE_STYLES.normal;
 
   const cycleSetType = () => {
+    lightHaptic();
     const currentIndex = SET_TYPES.indexOf(set.setType);
     const nextIndex = (currentIndex + 1) % SET_TYPES.length;
     onUpdate({ setType: SET_TYPES[nextIndex] });
@@ -120,12 +122,12 @@ export function SetRow({
       )}
 
       {/* Complete Button */}
-      <TouchableOpacity style={styles.completeButton} onPress={onComplete}>
+      <TouchableOpacity style={styles.completeButton} onPress={() => { mediumHaptic(); onComplete(); }}>
         <Text style={styles.completeButtonText}>✓</Text>
       </TouchableOpacity>
 
       {/* Delete Button */}
-      <TouchableOpacity style={styles.deleteButton} onPress={onDelete}>
+      <TouchableOpacity style={styles.deleteButton} onPress={() => { warningHaptic(); onDelete(); }}>
         <Text style={styles.deleteButtonText}>×</Text>
       </TouchableOpacity>
 

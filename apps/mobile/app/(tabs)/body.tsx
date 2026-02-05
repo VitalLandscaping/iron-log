@@ -195,7 +195,7 @@ export default function BodyScreen() {
               </Text>
             </>
           ) : (
-            <Text style={styles.noWeightText}>No weight logged yet</Text>
+            <Text style={styles.noWeightText}>Log your first weigh-in</Text>
           )}
         </View>
 
