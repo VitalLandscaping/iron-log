@@ -16,6 +16,12 @@ import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { theme } from '@/constants/colors';
 import { api, WorkoutTemplate, UserSettings } from '@/services/api';
+import {
+  registerForPushNotifications,
+  getNotificationsEnabled,
+  setNotificationsEnabled,
+  getPlatform,
+} from '@/services/notifications';
 
 const PLATE_OPTIONS = [45, 35, 25, 10, 5, 2.5];
 
@@ -27,6 +33,7 @@ export default function SettingsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [exportingWorkouts, setExportingWorkouts] = useState(false);
   const [exportingBodyWeight, setExportingBodyWeight] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabledState] = useState(true);
 
   // Local state for inputs (to avoid too many API calls)
   const [restTimerValue, setRestTimerValue] = useState(90);
@@ -34,14 +41,16 @@ export default function SettingsScreen() {
 
   const loadData = async () => {
     try {
-      const [templatesData, settingsData] = await Promise.all([
+      const [templatesData, settingsData, notifEnabled] = await Promise.all([
         api.getTemplates(),
         api.getSettings(),
+        getNotificationsEnabled(),
       ]);
       setTemplates(templatesData);
       setSettings(settingsData);
       setRestTimerValue(settingsData.defaultRestTimerSec);
       setBarWeightValue(settingsData.barWeight.toString());
+      setNotificationsEnabledState(notifEnabled);
     } catch (error) {
       console.error('Failed to load settings:', error);
     } finally {
@@ -155,6 +164,33 @@ export default function SettingsScreen() {
     }
   };
 
+  const handleNotificationToggle = async (enabled: boolean) => {
+    setNotificationsEnabledState(enabled);
+    await setNotificationsEnabled(enabled);
+
+    if (enabled) {
+      // Re-register token
+      const token = await registerForPushNotifications();
+      if (token) {
+        try {
+          await api.registerDeviceToken(token, getPlatform());
+        } catch (error) {
+          console.error('Failed to register token:', error);
+        }
+      }
+    } else {
+      // Unregister token (optional - token will just not receive notifications from server)
+      const token = await registerForPushNotifications();
+      if (token) {
+        try {
+          await api.unregisterDeviceToken(token);
+        } catch (error) {
+          console.error('Failed to unregister token:', error);
+        }
+      }
+    }
+  };
+
   if (loading || !settings) {
     return (
       <View style={styles.container}>
@@ -209,6 +245,24 @@ export default function SettingsScreen() {
             </View>
           ))
         )}
+      </View>
+
+      {/* Notifications Section */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Notifications</Text>
+
+        <View style={styles.settingRow}>
+          <View style={styles.settingInfo}>
+            <Text style={styles.settingLabel}>Daily Nudge</Text>
+            <Text style={styles.settingSubtext}>Random workout reminders 9am-9pm</Text>
+          </View>
+          <Switch
+            value={notificationsEnabled}
+            onValueChange={handleNotificationToggle}
+            trackColor={{ false: theme.border, true: theme.accent + '66' }}
+            thumbColor={notificationsEnabled ? theme.accent : theme.textMuted}
+          />
+        </View>
       </View>
 
       {/* Workout Preferences Section */}

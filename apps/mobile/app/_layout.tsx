@@ -7,6 +7,14 @@ import { useEffect } from 'react';
 import 'react-native-reanimated';
 import { theme } from '@/constants/colors';
 import { WorkoutProvider } from '@/context/WorkoutContext';
+import { api } from '@/services/api';
+import {
+  registerForPushNotifications,
+  getNotificationsEnabled,
+  getPlatform,
+  clearBadgeCount,
+  addNotificationResponseListener,
+} from '@/services/notifications';
 
 export {
   ErrorBoundary,
@@ -54,6 +62,42 @@ export default function RootLayout() {
 }
 
 function RootLayoutNav() {
+  useEffect(() => {
+    async function setupNotifications() {
+      try {
+        // Check if notifications are enabled in settings
+        const enabled = await getNotificationsEnabled();
+        if (!enabled) {
+          console.log('[Notifications] Disabled in settings - skipping registration');
+          return;
+        }
+
+        // Get push token
+        const token = await registerForPushNotifications();
+        if (token) {
+          // Register with backend
+          await api.registerDeviceToken(token, getPlatform());
+          console.log('[Notifications] Token registered with backend');
+        }
+
+        // Clear badge when app opens
+        await clearBadgeCount();
+      } catch (error) {
+        console.error('[Notifications] Setup failed:', error);
+      }
+    }
+
+    setupNotifications();
+
+    // Handle notification taps
+    const subscription = addNotificationResponseListener((response) => {
+      console.log('[Notifications] User tapped notification:', response.notification.request.content);
+      // Could navigate to specific screen here based on notification data
+    });
+
+    return () => subscription.remove();
+  }, []);
+
   return (
     <WorkoutProvider>
       <ThemeProvider value={IronLogDarkTheme}>

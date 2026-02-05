@@ -31,6 +31,7 @@
     "class-validator": "^0.14.3",
     "cloudinary": "^2.9.0",
     "dotenv": "^16.4.7",
+    "firebase-admin": "^13.6.1",
     "multer": "^2.0.2",
     "pg": "^8.18.0",
     "prisma": "^7.3.0",

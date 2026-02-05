@@ -376,4 +376,11 @@ export const api = {
     });
     return response.text();
   },
+
+  // Notifications
+  registerDeviceToken: (token: string, platform: 'ios' | 'android') =>
+    request<void>('/notifications/register', { method: 'POST', body: { token, platform } }),
+
+  unregisterDeviceToken: (token: string) =>
+    request<void>('/notifications/unregister', { method: 'DELETE', body: { token } }),
 };
