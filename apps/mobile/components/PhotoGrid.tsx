@@ -24,6 +24,8 @@ const NUM_COLUMNS = 3;
 const ITEM_WIDTH = (SCREEN_WIDTH - 32 - COLUMN_GAP * (NUM_COLUMNS - 1)) / NUM_COLUMNS;
 
 export default function PhotoGrid({ photos, onPress, onDelete }: PhotoGridProps) {
+  const safePhotos = photos || [];
+
   const handleLongPress = (photo: ProgressPhoto) => {
     Alert.alert('Delete Photo', 'Are you sure you want to delete this photo?', [
       { text: 'Cancel', style: 'cancel' },
@@ -54,7 +56,7 @@ export default function PhotoGrid({ photos, onPress, onDelete }: PhotoGridProps)
     </TouchableOpacity>
   );
 
-  if (photos.length === 0) {
+  if (safePhotos.length === 0) {
     return (
       <View style={styles.emptyContainer}>
         <Text style={styles.emptyText}>No photos yet</Text>
@@ -65,7 +67,7 @@ export default function PhotoGrid({ photos, onPress, onDelete }: PhotoGridProps)
 
   return (
     <FlatList
-      data={photos}
+      data={safePhotos}
       renderItem={renderItem}
       keyExtractor={(item) => item.id}
       numColumns={NUM_COLUMNS}

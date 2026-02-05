@@ -16,7 +16,9 @@ const CHART_HEIGHT = 180;
 const CHART_PADDING = { top: 20, right: 20, bottom: 30, left: 50 };
 
 export default function WeightChart({ data }: WeightChartProps) {
-  if (data.length === 0) {
+  const safeData = data || [];
+
+  if (safeData.length === 0) {
     return (
       <View style={styles.emptyContainer}>
         <Text style={styles.emptyText}>No data yet</Text>
@@ -28,7 +30,7 @@ export default function WeightChart({ data }: WeightChartProps) {
   const chartWidth = screenWidth - CHART_PADDING.left - CHART_PADDING.right;
   const chartHeight = CHART_HEIGHT - CHART_PADDING.top - CHART_PADDING.bottom;
 
-  const weights = data.map((d) => d.weight);
+  const weights = safeData.map((d) => d.weight);
   const minWeight = Math.min(...weights);
   const maxWeight = Math.max(...weights);
   const weightRange = maxWeight - minWeight || 1;
@@ -39,8 +41,8 @@ export default function WeightChart({ data }: WeightChartProps) {
   const paddedRange = paddedMax - paddedMin || 1;
 
   // Calculate points
-  const points = data.map((d, i) => {
-    const x = CHART_PADDING.left + (i / Math.max(data.length - 1, 1)) * chartWidth;
+  const points = safeData.map((d, i) => {
+    const x = CHART_PADDING.left + (i / Math.max(safeData.length - 1, 1)) * chartWidth;
     const y =
       CHART_PADDING.top + chartHeight - ((d.weight - paddedMin) / paddedRange) * chartHeight;
     return { x, y, ...d };
@@ -56,12 +58,12 @@ export default function WeightChart({ data }: WeightChartProps) {
 
   // X-axis labels (first and last date)
   const xLabels =
-    data.length > 1
+    safeData.length > 1
       ? [
-          { x: CHART_PADDING.left, label: formatDate(data[0].date) },
-          { x: CHART_PADDING.left + chartWidth, label: formatDate(data[data.length - 1].date) },
+          { x: CHART_PADDING.left, label: formatDate(safeData[0].date) },
+          { x: CHART_PADDING.left + chartWidth, label: formatDate(safeData[safeData.length - 1].date) },
         ]
-      : [{ x: CHART_PADDING.left + chartWidth / 2, label: formatDate(data[0].date) }];
+      : [{ x: CHART_PADDING.left + chartWidth / 2, label: formatDate(safeData[0].date) }];
 
   return (
     <View style={styles.container}>
@@ -109,7 +111,7 @@ export default function WeightChart({ data }: WeightChartProps) {
             y={CHART_HEIGHT - 8}
             fill={theme.textMuted}
             fontSize={10}
-            textAnchor={i === 0 ? 'start' : data.length > 1 ? 'end' : 'middle'}
+            textAnchor={i === 0 ? 'start' : safeData.length > 1 ? 'end' : 'middle'}
           >
             {item.label}
           </SvgText>
