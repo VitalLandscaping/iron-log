@@ -10,9 +10,10 @@ import {
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { theme, MUSCLE_COLORS } from '@/constants/colors';
-import { api, WorkoutTemplate, Workout, Streak, StatsSummary } from '@/services/api';
+import { api, WorkoutTemplate, Workout, Streak, StatsSummary, BodyWeight } from '@/services/api';
 import { useActiveWorkout } from '@/hooks/useActiveWorkout';
 import MuscleMap from '@/components/MuscleMap';
+import WeightChart from '@/components/WeightChart';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -22,18 +23,20 @@ export default function HomeScreen() {
   const [streak, setStreak] = useState<Streak | null>(null);
   const [stats, setStats] = useState<StatsSummary | null>(null);
   const [muscleActivity, setMuscleActivity] = useState<Record<string, number>>({});
+  const [bodyWeights, setBodyWeights] = useState<BodyWeight[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [startingTemplate, setStartingTemplate] = useState<string | null>(null);
 
   const loadData = async () => {
     try {
-      const [templatesData, workoutsData, streakData, statsData, muscleData] = await Promise.all([
+      const [templatesData, workoutsData, streakData, statsData, muscleData, weightsData] = await Promise.all([
         api.getTemplates(),
         api.getWorkouts(1, 5),
         api.getStreak(),
         api.getSummary(),
         api.getMuscleActivity(),
+        api.getBodyWeights(14),
       ]);
       setTemplates(templatesData);
       // Only show completed workouts
@@ -41,6 +44,7 @@ export default function HomeScreen() {
       setStreak(streakData);
       setStats(statsData);
       setMuscleActivity(muscleData);
+      setBodyWeights(weightsData);
     } catch (error) {
       console.error('Failed to load data:', error);
     } finally {
@@ -202,6 +206,45 @@ export default function HomeScreen() {
             <Text style={styles.subtitleText}>Last 7 days</Text>
           </View>
           <MuscleMap activity={muscleActivity} />
+        </View>
+      )}
+
+      {/* Body Weight Section */}
+      {bodyWeights.length > 0 && (
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Body Weight</Text>
+            <TouchableOpacity onPress={() => router.push('/(tabs)/body')}>
+              <Text style={styles.seeAllText}>Log</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.bodyWeightCard}>
+            <View style={styles.bodyWeightHeader}>
+              <View>
+                <Text style={styles.bodyWeightValue}>{bodyWeights[0].weight}</Text>
+                <Text style={styles.bodyWeightUnit}>lbs</Text>
+              </View>
+              {bodyWeights.length >= 2 && (
+                <View style={styles.bodyWeightChange}>
+                  {(() => {
+                    const change = bodyWeights[0].weight - bodyWeights[bodyWeights.length - 1].weight;
+                    const isGain = change > 0;
+                    return (
+                      <Text style={[styles.bodyWeightChangeText, { color: isGain ? theme.danger : theme.accent }]}>
+                        {isGain ? '+' : ''}{change.toFixed(1)} lbs
+                      </Text>
+                    );
+                  })()}
+                  <Text style={styles.bodyWeightChangePeriod}>Last 2 weeks</Text>
+                </View>
+              )}
+            </View>
+            <View style={styles.miniChartContainer}>
+              <WeightChart
+                data={bodyWeights.map((w) => ({ date: w.date, weight: w.weight })).reverse()}
+              />
+            </View>
+          </View>
         </View>
       )}
 
@@ -600,6 +643,50 @@ const styles = StyleSheet.create({
     color: theme.bg,
     fontFamily: 'SpaceMono',
   },
+
+  // Body Weight
+  bodyWeightCard: {
+    backgroundColor: theme.card,
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: theme.border,
+  },
+  bodyWeightHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  bodyWeightValue: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: theme.accent,
+    fontFamily: 'SpaceMono',
+  },
+  bodyWeightUnit: {
+    fontSize: 14,
+    color: theme.textMuted,
+    fontFamily: 'SpaceMono',
+  },
+  bodyWeightChange: {
+    alignItems: 'flex-end',
+  },
+  bodyWeightChangeText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    fontFamily: 'SpaceMono',
+  },
+  bodyWeightChangePeriod: {
+    fontSize: 10,
+    color: theme.textMuted,
+    fontFamily: 'SpaceMono',
+    marginTop: 2,
+  },
+  miniChartContainer: {
+    marginTop: 8,
+  },
+
   bottomSpacer: {
     height: 100,
   },

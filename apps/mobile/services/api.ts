@@ -158,6 +158,22 @@ export interface ExerciseWithHistory {
   maxWeight: number;
 }
 
+export interface BodyWeight {
+  id: string;
+  userId: string;
+  date: string;
+  weight: number;
+  createdAt: string;
+}
+
+export interface ProgressPhoto {
+  id: string;
+  userId: string;
+  date: string;
+  imageUrl: string;
+  createdAt: string;
+}
+
 // API Client
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
@@ -311,4 +327,53 @@ export const api = {
 
   // Exercises with history
   getExercisesWithHistory: () => request<ExerciseWithHistory[]>('/exercises/with-history'),
+
+  // Body Weight
+  getBodyWeights: (days?: number) =>
+    request<BodyWeight[]>(days ? `/bodyweight?days=${days}` : '/bodyweight'),
+
+  logBodyWeight: (weight: number) =>
+    request<BodyWeight>('/bodyweight', { method: 'POST', body: { weight } }),
+
+  // Photos
+  getPhotos: () => request<ProgressPhoto[]>('/photos'),
+
+  uploadPhoto: async (imageUri: string): Promise<ProgressPhoto> => {
+    const formData = new FormData();
+    formData.append('photo', {
+      uri: imageUri,
+      type: 'image/jpeg',
+      name: 'progress.jpg',
+    } as any);
+
+    const response = await fetch(`${BASE_URL}/photos/upload`, {
+      method: 'POST',
+      headers: { 'x-api-key': API_KEY ?? '' },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new ApiError(response.status, errorText || `HTTP ${response.status}`);
+    }
+
+    return response.json();
+  },
+
+  deletePhoto: (id: string) => request<void>(`/photos/${id}`, { method: 'DELETE' }),
+
+  // Export
+  exportWorkoutsCSV: async (): Promise<string> => {
+    const response = await fetch(`${BASE_URL}/export/workouts`, {
+      headers: { 'x-api-key': API_KEY ?? '' },
+    });
+    return response.text();
+  },
+
+  exportBodyWeightCSV: async (): Promise<string> => {
+    const response = await fetch(`${BASE_URL}/export/bodyweight`, {
+      headers: { 'x-api-key': API_KEY ?? '' },
+    });
+    return response.text();
+  },
 };

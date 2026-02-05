@@ -9,8 +9,11 @@ import {
   TextInput,
   Alert,
   RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 import { theme } from '@/constants/colors';
 import { api, WorkoutTemplate, UserSettings } from '@/services/api';
 
@@ -22,6 +25,8 @@ export default function SettingsScreen() {
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [exportingWorkouts, setExportingWorkouts] = useState(false);
+  const [exportingBodyWeight, setExportingBodyWeight] = useState(false);
 
   // Local state for inputs (to avoid too many API calls)
   const [restTimerValue, setRestTimerValue] = useState(90);
@@ -117,6 +122,37 @@ export default function SettingsScreen() {
     const value = parseFloat(barWeightValue) || 45;
     setBarWeightValue(value.toString());
     updateSetting('barWeight', value);
+  };
+
+  const exportCSV = async (type: 'workouts' | 'bodyweight') => {
+    const setExporting = type === 'workouts' ? setExportingWorkouts : setExportingBodyWeight;
+    setExporting(true);
+
+    try {
+      const csv = type === 'workouts'
+        ? await api.exportWorkoutsCSV()
+        : await api.exportBodyWeightCSV();
+
+      const filename = type === 'workouts' ? 'iron-log-workouts.csv' : 'iron-log-bodyweight.csv';
+      const fileUri = FileSystem.documentDirectory + filename;
+
+      await FileSystem.writeAsStringAsync(fileUri, csv);
+
+      const canShare = await Sharing.isAvailableAsync();
+      if (canShare) {
+        await Sharing.shareAsync(fileUri, {
+          mimeType: 'text/csv',
+          dialogTitle: `Export ${filename}`,
+        });
+      } else {
+        Alert.alert('Export Complete', `File saved to ${fileUri}`);
+      }
+    } catch (error) {
+      console.error('Export failed:', error);
+      Alert.alert('Export Failed', 'Failed to export data');
+    } finally {
+      setExporting(false);
+    }
   };
 
   if (loading || !settings) {
@@ -278,6 +314,41 @@ export default function SettingsScreen() {
             );
           })}
         </View>
+      </View>
+
+      {/* Data Export Section */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Data Export</Text>
+
+        <TouchableOpacity
+          style={[styles.exportButton, exportingWorkouts && styles.exportButtonDisabled]}
+          onPress={() => exportCSV('workouts')}
+          disabled={exportingWorkouts}
+        >
+          {exportingWorkouts ? (
+            <ActivityIndicator color={theme.accent} size="small" />
+          ) : (
+            <>
+              <Text style={styles.exportButtonText}>📊 Export Workouts CSV</Text>
+              <Text style={styles.exportButtonSubtext}>All workout data with sets, weights, and PRs</Text>
+            </>
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.exportButton, exportingBodyWeight && styles.exportButtonDisabled]}
+          onPress={() => exportCSV('bodyweight')}
+          disabled={exportingBodyWeight}
+        >
+          {exportingBodyWeight ? (
+            <ActivityIndicator color={theme.accent} size="small" />
+          ) : (
+            <>
+              <Text style={styles.exportButtonText}>⚖️ Export Body Weight CSV</Text>
+              <Text style={styles.exportButtonSubtext}>All body weight entries</Text>
+            </>
+          )}
+        </TouchableOpacity>
       </View>
 
       <View style={styles.bottomSpacer} />
@@ -474,6 +545,28 @@ const styles = StyleSheet.create({
   platePillTextActive: {
     color: theme.accent,
     fontWeight: 'bold',
+  },
+  exportButton: {
+    backgroundColor: theme.card,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: theme.border,
+  },
+  exportButtonDisabled: {
+    opacity: 0.6,
+  },
+  exportButtonText: {
+    fontSize: 15,
+    color: theme.text,
+    fontFamily: 'SpaceMono',
+    marginBottom: 4,
+  },
+  exportButtonSubtext: {
+    fontSize: 12,
+    color: theme.textMuted,
+    fontFamily: 'SpaceMono',
   },
   bottomSpacer: {
     height: 100,

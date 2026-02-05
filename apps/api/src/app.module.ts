@@ -9,9 +9,22 @@ import { ExercisesModule } from './exercises/exercises.module';
 import { SettingsModule } from './settings/settings.module';
 import { TemplatesModule } from './templates/templates.module';
 import { StatsModule } from './stats/stats.module';
+import { BodyWeightModule } from './body-weight/body-weight.module';
+import { PhotosModule } from './photos/photos.module';
+import { ExportModule } from './export/export.module';
 
 @Module({
-  imports: [PrismaModule, WorkoutsModule, ExercisesModule, SettingsModule, TemplatesModule, StatsModule],
+  imports: [
+    PrismaModule,
+    WorkoutsModule,
+    ExercisesModule,
+    SettingsModule,
+    TemplatesModule,
+    StatsModule,
+    BodyWeightModule,
+    PhotosModule,
+    ExportModule,
+  ],
   controllers: [AppController],
   providers: [
     AppService,
