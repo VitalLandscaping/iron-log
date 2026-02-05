@@ -78,9 +78,11 @@ export function ExerciseCard({
       .catch(() => {});
   }, [workoutExercise.exerciseId]);
 
+  const sets = workoutExercise.sets || [];
+
   // Calculate estimated 1RM from best non-warmup set
   const estimated1RM = useMemo(() => {
-    const normalSets = workoutExercise.sets.filter(
+    const normalSets = sets.filter(
       (s) => s.setType !== 'warmup' && s.weight > 0 && s.reps > 0
     );
     if (normalSets.length === 0) return 0;
@@ -91,23 +93,23 @@ export function ExerciseCard({
       if (e1rm > best1RM) best1RM = e1rm;
     }
     return best1RM;
-  }, [workoutExercise.sets]);
+  }, [sets]);
 
   // Check if warmup sets already exist
-  const hasWarmupSets = workoutExercise.sets.some((s) => s.setType === 'warmup');
+  const hasWarmupSets = sets.some((s) => s.setType === 'warmup');
 
   // Get first working set weight for warmup generation
   const workingWeight = useMemo(() => {
-    const normalSet = workoutExercise.sets.find(
+    const normalSet = sets.find(
       (s) => s.setType === 'normal' && s.weight > 0
     );
     return normalSet?.weight ?? 0;
-  }, [workoutExercise.sets]);
+  }, [sets]);
 
   const handleAddSet = () => {
     lightHaptic();
-    const nextSetNumber = workoutExercise.sets.length + 1;
-    const lastSet = workoutExercise.sets[workoutExercise.sets.length - 1];
+    const nextSetNumber = sets.length + 1;
+    const lastSet = sets[sets.length - 1];
     onAddSet({
       setNumber: nextSetNumber,
       weight: lastSet?.weight ?? 0,
@@ -240,7 +242,7 @@ export function ExerciseCard({
 
       {/* Sets */}
       <View style={styles.setsContainer}>
-        {workoutExercise.sets.map((set) => (
+        {sets.map((set) => (
           <SetRow
             key={set.id}
             set={set}

@@ -169,7 +169,7 @@ export default function WorkoutScreen() {
   const groupedExercises = useMemo(() => {
     if (!activeWorkout) return [];
 
-    const exercises = activeWorkout.exercises;
+    const exercises = activeWorkout.exercises || [];
     const groups: { superset: string | null; exercises: typeof exercises }[] = [];
     let currentGroup: typeof exercises = [];
     let currentSuperset: string | null = null;
@@ -304,7 +304,8 @@ export default function WorkoutScreen() {
       >
         {groupedExercises.map((group, groupIndex) => {
           const supersetColor = group.superset ? SUPERSET_COLORS[group.superset] : undefined;
-          const isSuperset = group.superset && group.exercises.length > 1;
+          const groupExercises = group.exercises || [];
+          const isSuperset = group.superset && groupExercises.length > 1;
 
           return (
             <View key={groupIndex}>
@@ -315,7 +316,7 @@ export default function WorkoutScreen() {
                   </Text>
                 </View>
               )}
-              {group.exercises.map((workoutExercise) => (
+              {groupExercises.map((workoutExercise) => (
                 <ExerciseCard
                   key={workoutExercise.id}
                   workoutExercise={workoutExercise}
