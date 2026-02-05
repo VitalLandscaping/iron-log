@@ -320,6 +320,9 @@ export default function WorkoutScreen() {
                   key={workoutExercise.id}
                   workoutExercise={workoutExercise}
                   showRpe={settings?.rpeTrackingEnabled ?? false}
+                  barWeight={settings?.barWeight ?? 45}
+                  availablePlates={settings?.availablePlates ?? [45, 35, 25, 10, 5, 2.5]}
+                  defaultRestTimer={settings?.defaultRestTimerSec ?? 90}
                   supersetColor={workoutExercise.supersetTag ? SUPERSET_COLORS[workoutExercise.supersetTag] : undefined}
                   restTimer={
                     restTimer?.workoutExerciseId === workoutExercise.id
@@ -334,6 +337,7 @@ export default function WorkoutScreen() {
                   onSkipRest={skipRestTimer}
                   onAdjustRest={adjustRestTimer}
                   onSetSuperset={(tag) => handleSetSuperset(workoutExercise.id, tag)}
+                  onUpdateRestTimer={(sec) => updateExercise(workoutExercise.id, { restTimerSec: sec })}
                 />
               ))}
             </View>

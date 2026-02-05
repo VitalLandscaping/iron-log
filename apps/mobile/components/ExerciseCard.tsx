@@ -1,18 +1,24 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal } from 'react-native';
+import React, { useEffect, useState, useMemo } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, Alert } from 'react-native';
 import { theme, MUSCLE_COLORS } from '@/constants/colors';
 import { WorkoutExercise, ExerciseSet, api } from '@/services/api';
 import { SetRow } from './SetRow';
 import { RestTimer } from './RestTimer';
+import { RestTimerOverride } from './RestTimerOverride';
+import { RPEInfo } from './RPEInfo';
+import { generateWarmupSets } from '@/services/warmupGenerator';
 
 const SUPERSET_TAGS = ['A', 'B', 'C', 'D', 'E'];
 
 interface ExerciseCardProps {
   workoutExercise: WorkoutExercise;
   showRpe: boolean;
+  barWeight: number;
+  availablePlates: number[];
+  defaultRestTimer: number;
   restTimer: { remaining: number; total: number } | null;
   supersetColor?: string;
-  onAddSet: (data: { setNumber: number; weight: number; reps: number }) => void;
+  onAddSet: (data: { setNumber: number; weight: number; reps: number; setType?: string }) => void;
   onUpdateSet: (setId: string, data: Partial<{ weight: number; reps: number; setType: string; rpe: number }>) => void;
   onDeleteSet: (setId: string) => void;
   onCompleteSet: (set: ExerciseSet) => void;
@@ -20,11 +26,21 @@ interface ExerciseCardProps {
   onSkipRest: () => void;
   onAdjustRest: (seconds: number) => void;
   onSetSuperset?: (tag: string | null) => void;
+  onUpdateRestTimer?: (restTimerSec: number | null) => void;
+}
+
+function calculateE1RM(weight: number, reps: number): number {
+  if (reps === 1) return weight;
+  if (reps === 0 || weight === 0) return 0;
+  return Math.round(weight * (1 + reps / 30));
 }
 
 export function ExerciseCard({
   workoutExercise,
   showRpe,
+  barWeight,
+  availablePlates,
+  defaultRestTimer,
   restTimer,
   supersetColor,
   onAddSet,
@@ -35,9 +51,13 @@ export function ExerciseCard({
   onSkipRest,
   onAdjustRest,
   onSetSuperset,
+  onUpdateRestTimer,
 }: ExerciseCardProps) {
   const [lastSession, setLastSession] = useState<string>('');
   const [menuVisible, setMenuVisible] = useState(false);
+  const [restTimerModalVisible, setRestTimerModalVisible] = useState(false);
+  const [rpeInfoVisible, setRpeInfoVisible] = useState(false);
+  const [generatingWarmups, setGeneratingWarmups] = useState(false);
   const muscleColor = MUSCLE_COLORS[workoutExercise.exercise.muscleGroup] || theme.textMuted;
 
   useEffect(() => {
@@ -57,6 +77,32 @@ export function ExerciseCard({
       .catch(() => {});
   }, [workoutExercise.exerciseId]);
 
+  // Calculate estimated 1RM from best non-warmup set
+  const estimated1RM = useMemo(() => {
+    const normalSets = workoutExercise.sets.filter(
+      (s) => s.setType !== 'warmup' && s.weight > 0 && s.reps > 0
+    );
+    if (normalSets.length === 0) return 0;
+
+    let best1RM = 0;
+    for (const set of normalSets) {
+      const e1rm = calculateE1RM(set.weight, set.reps);
+      if (e1rm > best1RM) best1RM = e1rm;
+    }
+    return best1RM;
+  }, [workoutExercise.sets]);
+
+  // Check if warmup sets already exist
+  const hasWarmupSets = workoutExercise.sets.some((s) => s.setType === 'warmup');
+
+  // Get first working set weight for warmup generation
+  const workingWeight = useMemo(() => {
+    const normalSet = workoutExercise.sets.find(
+      (s) => s.setType === 'normal' && s.weight > 0
+    );
+    return normalSet?.weight ?? 0;
+  }, [workoutExercise.sets]);
+
   const handleAddSet = () => {
     const nextSetNumber = workoutExercise.sets.length + 1;
     const lastSet = workoutExercise.sets[workoutExercise.sets.length - 1];
@@ -72,11 +118,63 @@ export function ExerciseCard({
     onSetSuperset?.(tag);
   };
 
+  const handleGenerateWarmups = async () => {
+    if (workingWeight <= 0) {
+      Alert.alert(
+        'Enter Working Weight',
+        'Please enter the weight for your first working set before generating warm-up sets.'
+      );
+      return;
+    }
+
+    setGeneratingWarmups(true);
+    try {
+      const warmups = generateWarmupSets(workingWeight, barWeight);
+
+      // Add warmup sets - they should be added with lower set numbers to appear first
+      // Since the API expects sequential set numbers, we need to add them and let the backend handle ordering
+      for (let i = 0; i < warmups.length; i++) {
+        const warmup = warmups[i];
+        onAddSet({
+          setNumber: i + 1,
+          weight: warmup.weight,
+          reps: warmup.reps,
+          setType: 'warmup',
+        });
+      }
+    } catch (error) {
+      console.error('Failed to generate warmups:', error);
+      Alert.alert('Error', 'Failed to generate warm-up sets');
+    } finally {
+      setGeneratingWarmups(false);
+    }
+  };
+
+  const handleRestTimerSave = (value: number | null) => {
+    onUpdateRestTimer?.(value);
+  };
+
   return (
     <View style={[styles.container, supersetColor && styles.containerSuperset, supersetColor && { borderLeftColor: supersetColor }]}>
+      {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Text style={styles.exerciseName}>{workoutExercise.exercise.name}</Text>
+          <View style={styles.titleRow}>
+            <Text style={styles.exerciseName}>{workoutExercise.exercise.name}</Text>
+            {onUpdateRestTimer && (
+              <TouchableOpacity
+                style={styles.timerButton}
+                onPress={() => setRestTimerModalVisible(true)}
+              >
+                <Text style={[
+                  styles.timerIcon,
+                  workoutExercise.restTimerSec != null && styles.timerIconActive
+                ]}>
+                  ⏱
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
           <View style={styles.pills}>
             <View style={[styles.musclePill, { backgroundColor: muscleColor + '33' }]}>
               <Text style={[styles.muscleText, { color: muscleColor }]}>
@@ -102,16 +200,51 @@ export function ExerciseCard({
         </View>
       </View>
 
-      {lastSession && (
-        <Text style={styles.lastSession}>Last: {lastSession}</Text>
+      {/* 1RM and Last Session */}
+      <View style={styles.metaRow}>
+        {estimated1RM > 0 && (
+          <Text style={styles.e1rmText}>Est. 1RM: {estimated1RM} lbs</Text>
+        )}
+        {lastSession && (
+          <Text style={styles.lastSession}>Last: {lastSession}</Text>
+        )}
+      </View>
+
+      {/* RPE Info Button (when RPE is enabled) */}
+      {showRpe && (
+        <View style={styles.rpeInfoRow}>
+          <TouchableOpacity
+            style={styles.rpeInfoButton}
+            onPress={() => setRpeInfoVisible(true)}
+          >
+            <Text style={styles.rpeInfoText}>RPE</Text>
+            <Text style={styles.rpeInfoIcon}>?</Text>
+          </TouchableOpacity>
+        </View>
       )}
 
+      {/* Warmup Sets Button */}
+      {!hasWarmupSets && (
+        <TouchableOpacity
+          style={styles.warmupButton}
+          onPress={handleGenerateWarmups}
+          disabled={generatingWarmups}
+        >
+          <Text style={styles.warmupButtonText}>
+            {generatingWarmups ? 'Generating...' : '+ Warm-up Sets'}
+          </Text>
+        </TouchableOpacity>
+      )}
+
+      {/* Sets */}
       <View style={styles.setsContainer}>
         {workoutExercise.sets.map((set) => (
           <SetRow
             key={set.id}
             set={set}
             showRpe={showRpe}
+            barWeight={barWeight}
+            availablePlates={availablePlates}
             onUpdate={(data) => onUpdateSet(set.id, data)}
             onComplete={() => onCompleteSet(set)}
             onDelete={() => onDeleteSet(set.id)}
@@ -173,6 +306,21 @@ export function ExerciseCard({
           </View>
         </TouchableOpacity>
       </Modal>
+
+      {/* Rest Timer Override Modal */}
+      <RestTimerOverride
+        visible={restTimerModalVisible}
+        currentValue={workoutExercise.restTimerSec}
+        defaultValue={defaultRestTimer}
+        onSave={handleRestTimerSave}
+        onClose={() => setRestTimerModalVisible(false)}
+      />
+
+      {/* RPE Info Modal */}
+      <RPEInfo
+        visible={rpeInfoVisible}
+        onClose={() => setRpeInfoVisible(false)}
+      />
     </View>
   );
 }
@@ -193,21 +341,36 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 8,
+    marginBottom: 4,
   },
   headerLeft: {
     flex: 1,
-    gap: 8,
+    gap: 6,
   },
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   exerciseName: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: 'bold',
     color: theme.text,
     fontFamily: 'SpaceMono',
+  },
+  timerButton: {
+    padding: 4,
+  },
+  timerIcon: {
+    fontSize: 16,
+    opacity: 0.5,
+  },
+  timerIconActive: {
+    opacity: 1,
   },
   pills: {
     flexDirection: 'row',
@@ -221,7 +384,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   muscleText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
     fontFamily: 'SpaceMono',
   },
@@ -231,7 +394,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   supersetText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: 'bold',
     fontFamily: 'SpaceMono',
     color: theme.bg,
@@ -258,11 +421,56 @@ const styles = StyleSheet.create({
     color: theme.textMuted,
     lineHeight: 24,
   },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 8,
+    flexWrap: 'wrap',
+  },
+  e1rmText: {
+    fontSize: 12,
+    color: theme.accentBlue,
+    fontFamily: 'SpaceMono',
+    fontWeight: 'bold',
+  },
   lastSession: {
+    fontSize: 11,
+    color: theme.textMuted,
+    fontFamily: 'SpaceMono',
+  },
+  rpeInfoRow: {
+    marginBottom: 8,
+  },
+  rpeInfoButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 4,
+    paddingVertical: 2,
+  },
+  rpeInfoText: {
+    fontSize: 11,
+    color: theme.textMuted,
+    fontFamily: 'SpaceMono',
+  },
+  rpeInfoIcon: {
+    fontSize: 12,
+    color: theme.accentBlue,
+    fontWeight: 'bold',
+  },
+  warmupButton: {
+    backgroundColor: theme.border,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+    marginBottom: 12,
+  },
+  warmupButtonText: {
     fontSize: 12,
     color: theme.textMuted,
     fontFamily: 'SpaceMono',
-    marginBottom: 12,
   },
   setsContainer: {
     marginBottom: 8,

@@ -21,7 +21,7 @@ interface UseActiveWorkoutReturn {
   startFromTemplate: (templateId: string) => Promise<void>;
   addExercise: (exerciseId: string) => Promise<WorkoutExercise | null>;
   removeExercise: (workoutExerciseId: string) => Promise<void>;
-  updateExercise: (workoutExerciseId: string, data: { supersetTag?: string | null }) => Promise<void>;
+  updateExercise: (workoutExerciseId: string, data: { supersetTag?: string | null; restTimerSec?: number | null }) => Promise<void>;
   addSet: (workoutExerciseId: string, data: SetInput) => Promise<ExerciseSet | null>;
   updateSet: (setId: string, data: Partial<SetInput>) => Promise<void>;
   deleteSet: (setId: string) => Promise<void>;
@@ -233,14 +233,17 @@ export function useActiveWorkout(): UseActiveWorkoutReturn {
   );
 
   const updateExercise = useCallback(
-    async (workoutExerciseId: string, data: { supersetTag?: string | null }) => {
+    async (workoutExerciseId: string, data: { supersetTag?: string | null; restTimerSec?: number | null }) => {
       if (!activeWorkout) return;
       try {
         // Convert null to undefined for API compatibility
-        const apiData = {
-          ...data,
-          supersetTag: data.supersetTag === null ? undefined : data.supersetTag,
-        };
+        const apiData: { supersetTag?: string; restTimerSec?: number } = {};
+        if (data.supersetTag !== undefined) {
+          apiData.supersetTag = data.supersetTag === null ? undefined : data.supersetTag;
+        }
+        if (data.restTimerSec !== undefined) {
+          apiData.restTimerSec = data.restTimerSec === null ? undefined : data.restTimerSec;
+        }
         await api.updateWorkoutExercise(activeWorkout.id, workoutExerciseId, apiData);
         await refreshWorkout();
       } catch (error) {
