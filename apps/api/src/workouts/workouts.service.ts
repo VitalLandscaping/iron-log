@@ -272,4 +272,105 @@ export class WorkoutsService {
     await this.prisma.exerciseSet.delete({ where: { id: setId } });
     return { deleted: true };
   }
+
+  async createFromTemplate(templateId: string) {
+    const userId = await this.getDefaultUserId();
+
+    // Get the template with exercises
+    const template = await this.prisma.workoutTemplate.findUnique({
+      where: { id: templateId },
+      include: {
+        exercises: {
+          include: { exercise: true },
+          orderBy: { sortOrder: 'asc' },
+        },
+      },
+    });
+
+    if (!template) throw new NotFoundException('Template not found');
+
+    const now = new Date();
+    const date = now.toISOString().split('T')[0];
+
+    // Create the workout
+    const workout = await this.prisma.workout.create({
+      data: {
+        userId,
+        date,
+        startTime: now,
+        templateName: template.name,
+      },
+    });
+
+    // Create workout exercises with sets
+    for (const templateExercise of template.exercises) {
+      // Create the workout exercise
+      const workoutExercise = await this.prisma.workoutExercise.create({
+        data: {
+          workoutId: workout.id,
+          exerciseId: templateExercise.exerciseId,
+          sortOrder: templateExercise.sortOrder,
+        },
+      });
+
+      // Look up the last session for this exercise
+      const lastSession = await this.prisma.workoutExercise.findFirst({
+        where: {
+          exerciseId: templateExercise.exerciseId,
+          workout: {
+            endTime: { not: null },
+            id: { not: workout.id },
+          },
+        },
+        include: {
+          sets: { orderBy: { setNumber: 'asc' } },
+        },
+        orderBy: {
+          workout: { startTime: 'desc' },
+        },
+      });
+
+      if (lastSession && lastSession.sets.length > 0) {
+        // Copy sets from last session
+        for (const set of lastSession.sets) {
+          await this.prisma.exerciseSet.create({
+            data: {
+              workoutExerciseId: workoutExercise.id,
+              setNumber: set.setNumber,
+              weight: set.weight,
+              reps: set.reps,
+              setType: 'normal',
+            },
+          });
+        }
+      } else {
+        // Create empty sets based on template defaults
+        for (let i = 1; i <= templateExercise.defaultSets; i++) {
+          await this.prisma.exerciseSet.create({
+            data: {
+              workoutExerciseId: workoutExercise.id,
+              setNumber: i,
+              weight: 0,
+              reps: templateExercise.defaultReps,
+              setType: 'normal',
+            },
+          });
+        }
+      }
+    }
+
+    // Return the full workout with exercises and sets
+    return this.prisma.workout.findUnique({
+      where: { id: workout.id },
+      include: {
+        exercises: {
+          include: {
+            exercise: true,
+            sets: { orderBy: { setNumber: 'asc' } },
+          },
+          orderBy: { sortOrder: 'asc' },
+        },
+      },
+    });
+  }
 }

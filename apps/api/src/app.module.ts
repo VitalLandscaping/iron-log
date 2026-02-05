@@ -7,9 +7,10 @@ import { ApiKeyGuard } from './guards/api-key.guard';
 import { WorkoutsModule } from './workouts/workouts.module';
 import { ExercisesModule } from './exercises/exercises.module';
 import { SettingsModule } from './settings/settings.module';
+import { TemplatesModule } from './templates/templates.module';
 
 @Module({
-  imports: [PrismaModule, WorkoutsModule, ExercisesModule, SettingsModule],
+  imports: [PrismaModule, WorkoutsModule, ExercisesModule, SettingsModule, TemplatesModule],
   controllers: [AppController],
   providers: [
     AppService,

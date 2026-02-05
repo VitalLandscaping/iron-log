@@ -93,6 +93,38 @@ export interface FinishWorkoutResponse {
   newPRs: string[];
 }
 
+export interface TemplateExercise {
+  id: string;
+  templateId: string;
+  exerciseId: string;
+  sortOrder: number;
+  defaultSets: number;
+  defaultReps: number;
+  exercise: Exercise;
+}
+
+export interface WorkoutTemplate {
+  id: string;
+  userId: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+  exercises: TemplateExercise[];
+  exerciseCount?: number;
+}
+
+export interface TemplateExerciseInput {
+  exerciseId: string;
+  sortOrder: number;
+  defaultSets: number;
+  defaultReps: number;
+}
+
+export interface CreateTemplateInput {
+  name: string;
+  exercises: TemplateExerciseInput[];
+}
+
 // API Client
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
@@ -215,4 +247,22 @@ export const api = {
 
   updateSettings: (data: Partial<UserSettings>) =>
     request<UserSettings>('/settings', { method: 'PATCH', body: data }),
+
+  // Templates
+  getTemplates: () => request<WorkoutTemplate[]>('/templates'),
+
+  getTemplate: (id: string) => request<WorkoutTemplate>(`/templates/${id}`),
+
+  createTemplate: (data: CreateTemplateInput) =>
+    request<WorkoutTemplate>('/templates', { method: 'POST', body: data }),
+
+  updateTemplate: (id: string, data: CreateTemplateInput) =>
+    request<WorkoutTemplate>(`/templates/${id}`, { method: 'PATCH', body: data }),
+
+  deleteTemplate: (id: string) =>
+    request<void>(`/templates/${id}`, { method: 'DELETE' }),
+
+  // Start from template
+  startFromTemplate: (templateId: string) =>
+    request<Workout>(`/workouts/from-template/${templateId}`, { method: 'POST' }),
 };

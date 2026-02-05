@@ -18,8 +18,10 @@ interface UseActiveWorkoutReturn {
   settings: UserSettings | null;
   startWorkout: () => Promise<void>;
   copyLastWorkout: () => Promise<void>;
+  startFromTemplate: (templateId: string) => Promise<void>;
   addExercise: (exerciseId: string) => Promise<WorkoutExercise | null>;
   removeExercise: (workoutExerciseId: string) => Promise<void>;
+  updateExercise: (workoutExerciseId: string, data: { supersetTag?: string | null }) => Promise<void>;
   addSet: (workoutExerciseId: string, data: SetInput) => Promise<ExerciseSet | null>;
   updateSet: (setId: string, data: Partial<SetInput>) => Promise<void>;
   deleteSet: (setId: string) => Promise<void>;
@@ -190,6 +192,17 @@ export function useActiveWorkout(): UseActiveWorkoutReturn {
     }
   }, [startWorkout]);
 
+  const startFromTemplate = useCallback(async (templateId: string) => {
+    try {
+      const workout = await api.startFromTemplate(templateId);
+      setActiveWorkout(workout);
+      await AsyncStorage.setItem(ACTIVE_WORKOUT_KEY, workout.id);
+    } catch (error) {
+      console.error('Failed to start from template:', error);
+      throw error;
+    }
+  }, []);
+
   const addExercise = useCallback(
     async (exerciseId: string): Promise<WorkoutExercise | null> => {
       if (!activeWorkout) return null;
@@ -214,6 +227,24 @@ export function useActiveWorkout(): UseActiveWorkoutReturn {
         await refreshWorkout();
       } catch (error) {
         console.error('Failed to remove exercise:', error);
+      }
+    },
+    [activeWorkout?.id, refreshWorkout],
+  );
+
+  const updateExercise = useCallback(
+    async (workoutExerciseId: string, data: { supersetTag?: string | null }) => {
+      if (!activeWorkout) return;
+      try {
+        // Convert null to undefined for API compatibility
+        const apiData = {
+          ...data,
+          supersetTag: data.supersetTag === null ? undefined : data.supersetTag,
+        };
+        await api.updateWorkoutExercise(activeWorkout.id, workoutExerciseId, apiData);
+        await refreshWorkout();
+      } catch (error) {
+        console.error('Failed to update exercise:', error);
       }
     },
     [activeWorkout?.id, refreshWorkout],
@@ -309,8 +340,10 @@ export function useActiveWorkout(): UseActiveWorkoutReturn {
     settings,
     startWorkout,
     copyLastWorkout,
+    startFromTemplate,
     addExercise,
     removeExercise,
+    updateExercise,
     addSet,
     updateSet,
     deleteSet,

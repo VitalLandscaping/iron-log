@@ -19,6 +19,11 @@ export class WorkoutsController {
     return this.workoutsService.create();
   }
 
+  @Post('from-template/:templateId')
+  createFromTemplate(@Param('templateId') templateId: string) {
+    return this.workoutsService.createFromTemplate(templateId);
+  }
+
   @Patch(':id/finish')
   finish(@Param('id') id: string) {
     return this.workoutsService.finish(id);

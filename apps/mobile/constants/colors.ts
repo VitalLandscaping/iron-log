@@ -49,3 +49,11 @@ export const MUSCLE_GROUPS = [
 export const SET_TYPES = ['normal', 'warmup', 'dropset', 'failure'];
 
 export const RPE_VALUES = [6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10];
+
+export const SUPERSET_COLORS: Record<string, string> = {
+  A: '#00ccff',
+  B: '#ff44aa',
+  C: '#ffcc00',
+  D: '#aa44ff',
+  E: '#00cc66',
+};
