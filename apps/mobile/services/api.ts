@@ -1,6 +1,99 @@
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL;
 const API_KEY = process.env.EXPO_PUBLIC_API_KEY;
 
+// Types
+export interface Exercise {
+  id: string;
+  name: string;
+  muscleGroup: string;
+  category: string;
+  isCustom: boolean;
+}
+
+export interface ExerciseSet {
+  id: string;
+  workoutExerciseId: string;
+  setNumber: number;
+  weight: number;
+  reps: number;
+  setType: string;
+  rpe: number | null;
+  isPersonalRecord: boolean;
+}
+
+export interface WorkoutExercise {
+  id: string;
+  workoutId: string;
+  exerciseId: string;
+  sortOrder: number;
+  notes: string | null;
+  restTimerSec: number | null;
+  supersetTag: string | null;
+  exercise: Exercise;
+  sets: ExerciseSet[];
+}
+
+export interface Workout {
+  id: string;
+  userId: string;
+  date: string;
+  startTime: string;
+  endTime: string | null;
+  durationMs: number | null;
+  notes: string | null;
+  templateName: string | null;
+  exercises: WorkoutExercise[];
+  exerciseCount?: number;
+}
+
+export interface ExerciseHistory {
+  exercise: Exercise;
+  sessions: {
+    workoutId: string;
+    date: string;
+    startTime: string;
+    sets: ExerciseSet[];
+  }[];
+}
+
+export interface PR {
+  weight: number;
+  reps: number;
+  date: string;
+  isPersonalRecord: boolean;
+}
+
+export interface E1RM {
+  estimated1RM: number;
+  basedOn: {
+    weight: number;
+    reps: number;
+  };
+  date: string;
+}
+
+export interface UserSettings {
+  defaultRestTimerSec: number;
+  keepScreenAwake: boolean;
+  rpeTrackingEnabled: boolean;
+  availablePlates: number[];
+  barWeight: number;
+}
+
+export interface SetInput {
+  setNumber: number;
+  weight: number;
+  reps: number;
+  setType?: string;
+  rpe?: number;
+}
+
+export interface FinishWorkoutResponse {
+  workout: Workout;
+  newPRs: string[];
+}
+
+// API Client
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
 interface RequestOptions {
@@ -47,9 +140,79 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
 }
 
 export const api = {
+  // Base methods
   get: <T>(endpoint: string) => request<T>(endpoint, { method: 'GET' }),
-  post: <T>(endpoint: string, body: unknown) => request<T>(endpoint, { method: 'POST', body }),
+  post: <T>(endpoint: string, body?: unknown) => request<T>(endpoint, { method: 'POST', body }),
   put: <T>(endpoint: string, body: unknown) => request<T>(endpoint, { method: 'PUT', body }),
-  patch: <T>(endpoint: string, body: unknown) => request<T>(endpoint, { method: 'PATCH', body }),
+  patch: <T>(endpoint: string, body?: unknown) => request<T>(endpoint, { method: 'PATCH', body }),
   delete: <T>(endpoint: string) => request<T>(endpoint, { method: 'DELETE' }),
+
+  // Workouts
+  startWorkout: () => request<Workout>('/workouts', { method: 'POST' }),
+
+  finishWorkout: (id: string) =>
+    request<FinishWorkoutResponse>(`/workouts/${id}/finish`, { method: 'PATCH' }),
+
+  getWorkouts: (page = 1, limit = 20) =>
+    request<Workout[]>(`/workouts?page=${page}&limit=${limit}`),
+
+  getLatestWorkout: () => request<Workout | null>('/workouts/latest'),
+
+  deleteWorkout: (id: string) => request<void>(`/workouts/${id}`, { method: 'DELETE' }),
+
+  // Exercises in workout
+  addExerciseToWorkout: (workoutId: string, exerciseId: string, sortOrder: number) =>
+    request<WorkoutExercise>(`/workouts/${workoutId}/exercises`, {
+      method: 'POST',
+      body: { exerciseId, sortOrder },
+    }),
+
+  updateWorkoutExercise: (
+    workoutId: string,
+    workoutExerciseId: string,
+    data: Partial<{ notes: string; restTimerSec: number; sortOrder: number; supersetTag: string }>,
+  ) =>
+    request<WorkoutExercise>(`/workouts/${workoutId}/exercises/${workoutExerciseId}`, {
+      method: 'PATCH',
+      body: data,
+    }),
+
+  removeExerciseFromWorkout: (workoutId: string, workoutExerciseId: string) =>
+    request<void>(`/workouts/${workoutId}/exercises/${workoutExerciseId}`, { method: 'DELETE' }),
+
+  addSet: (workoutId: string, workoutExerciseId: string, data: SetInput) =>
+    request<ExerciseSet>(`/workouts/${workoutId}/exercises/${workoutExerciseId}/sets`, {
+      method: 'POST',
+      body: data,
+    }),
+
+  updateSet: (workoutId: string, setId: string, data: Partial<SetInput>) =>
+    request<ExerciseSet>(`/workouts/${workoutId}/sets/${setId}`, {
+      method: 'PATCH',
+      body: data,
+    }),
+
+  deleteSet: (workoutId: string, setId: string) =>
+    request<void>(`/workouts/${workoutId}/sets/${setId}`, { method: 'DELETE' }),
+
+  // Exercises
+  getExercises: (muscle?: string) =>
+    request<Exercise[]>(muscle ? `/exercises?muscle=${encodeURIComponent(muscle)}` : '/exercises'),
+
+  getExercise: (id: string) => request<Exercise>(`/exercises/${id}`),
+
+  getExerciseHistory: (id: string) => request<ExerciseHistory>(`/exercises/${id}/history`),
+
+  getExercisePR: (id: string) => request<PR | null>(`/exercises/${id}/pr`),
+
+  getExercise1RM: (id: string) => request<E1RM | null>(`/exercises/${id}/1rm`),
+
+  createExercise: (data: { name: string; muscleGroup: string; category: string }) =>
+    request<Exercise>('/exercises', { method: 'POST', body: data }),
+
+  // Settings
+  getSettings: () => request<UserSettings>('/settings'),
+
+  updateSettings: (data: Partial<UserSettings>) =>
+    request<UserSettings>('/settings', { method: 'PATCH', body: data }),
 };

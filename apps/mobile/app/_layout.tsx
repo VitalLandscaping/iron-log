@@ -6,6 +6,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
 import { theme } from '@/constants/colors';
+import { WorkoutProvider } from '@/context/WorkoutContext';
 
 export {
   ErrorBoundary,
@@ -54,11 +55,22 @@ export default function RootLayout() {
 
 function RootLayoutNav() {
   return (
-    <ThemeProvider value={IronLogDarkTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-      </Stack>
-    </ThemeProvider>
+    <WorkoutProvider>
+      <ThemeProvider value={IronLogDarkTheme}>
+        <Stack>
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+          <Stack.Screen
+            name="exercise-picker"
+            options={{
+              presentation: 'modal',
+              title: 'Add Exercise',
+              headerStyle: { backgroundColor: theme.card },
+              headerTintColor: theme.text,
+            }}
+          />
+        </Stack>
+      </ThemeProvider>
+    </WorkoutProvider>
   );
 }
